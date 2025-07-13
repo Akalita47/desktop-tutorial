@@ -1,24 +1,626 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSINT AI Dashboard</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flipkart Logistics - Real-time Vehicle Tracking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map {
+            height: 450px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        .blink {
+            animation: blink-animation 1.5s infinite;
+        }
+        
+        @keyframes blink-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .route-marker {
+            background-color: #3182ce;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+        }
+    </style>
 </head>
-<body>
-  <header>
-    🧠 OSINT AI Dashboard – Real-time Alerts with Analyst Input
-  </header>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/0bf82d3d-c6be-4449-af18-1567aa426271.png" alt="Flipkart Logistics Company Logo with modern orange and white design" class="h-10 mr-4">
+                <h1 class="text-xl font-bold text-gray-800">Vehicle Tracking System</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search vehicles..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">AD</div>
+                    <span class="text-sm font-medium">Admin</span>
+                </div>
+            </div>
+        </div>
+    </header>
 
-  <div id="map"></div>
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-sm p-4">
+                <h2 class="text-lg font-semibold mb-4">Quick Actions</h2>
+                <ul class="space-y-2">
+                    <li>
+                        <button class="w-full flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 text-blue-600 font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Active Vehicles</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Delivery Schedule</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span>Reports</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span>Settings</span>
+                        </button>
+                    </li>
+                </ul>
 
-  <footer>
-    Developed for AI-based OSINT Mapping – Interactive, Responsive, and Analyst-friendly.
-  </footer>
+                <div class="mt-8">
+                    <h3 class="text-md font-semibold mb-3">Active Vehicles</h3>
+                    <div class="space-y-3 custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="relative">
+                                    <div class="w-3 h-3 rounded-full bg-green-500 absolute -right-1 -top-1 border-2 border-white"></div>
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/fe1152ef-21f8-49f3-aadc-fa7a8cac7d84.png" alt="Small icon of a delivery truck with Flipkart branding" class="w-10 h-10 rounded">
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">DL 01 AB 1234</h4>
+                                    <p class="text-xs text-gray-500">Medium Truck</p>
+                                </div>
+                            </div>
+                            <button class="text-blue-500 hover:text-blue-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="relative">
+                                    <div class="w-3 h-3 rounded-full bg-green-500 absolute -right-1 -top-1 border-2 border-white"></div>
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e52506f7-7b39-44d6-98c8-2bf446106976.png" alt="Small icon of a scooter with delivery box for last mile" class="w-10 h-10 rounded">
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">KA 04 CD 5678</h4>
+                                    <p class="text-xs text-gray-500">Delivery Scooter</p>
+                                </div>
+                            </div>
+                            <button class="text-blue-500 hover:text-blue-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="relative">
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500 absolute -right-1 -top-1 border-2 border-white"></div>
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/4a711968-681b-484d-8998-269c226dad12.png" alt="Icon representing a van used for suburban deliveries" class="w-10 h-10 rounded">
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">MH 02 EF 9012</h4>
+                                    <p class="text-xs text-gray-500">Mini Van</p>
+                                </div>
+                            </div>
+                            <button class="text-blue-500 hover:text-blue-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="relative">
+                                    <div class="w-3 h-3 rounded-full bg-red-500 absolute -right-1 -top-1 border-2 border-white"></div>
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/c2a68154-d023-4805-b5d7-e3fbd778184a.png" alt="Icon of a heavy truck used for intercity transportation" class="w-10 h-10 rounded">
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">TN 03 GH 3456</h4>
+                                    <p class="text-xs text-gray-500">Heavy Truck</p>
+                                </div>
+                            </div>
+                            <button class="text-blue-500 hover:text-blue-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="script.js"></script>
+            <!-- Main Dashboard -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">Active Vehicles</p>
+                                <h3 class="text-2xl font-bold">24</h3>
+                            </div>
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">On-time Deliveries</p>
+                                <h3 class="text-2xl font-bold">89%</h3>
+                            </div>
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">Avg. Delivery Time</p>
+                                <h3 class="text-2xl font-bold">3.2h</h3>
+                            </div>
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map and Vehicle Tracking -->
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">Live Vehicle Tracking</h2>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+                                <span class="text-xs">Moving</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-yellow-500 mr-1"></div>
+                                <span class="text-xs">Idle</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
+                                <span class="text-xs">Stopped</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="map"></div>
+                </div>
+
+                <!-- Vehicle Details and Route Information -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Selected Vehicle Details -->
+                    <div class="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm">
+                        <h2 class="text-lg font-semibold mb-4">Vehicle Details</h2>
+                        <div class="space-y-4">
+                            <div class="flex justify-center">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/07caee58-a18a-487c-be40-a83a3e1a007f.png" alt="High quality 3D render of a modern delivery truck with Flipkart branding" class="rounded-lg">
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg">DL 01 AB 1234</h3>
+                                <p class="text-sm text-gray-500">Medium Truck - 5 Ton Capacity</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-xs text-gray-500">Driver</p>
+                                    <p class="font-medium">Rahul Sharma</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Phone</p>
+                                    <p class="font-medium">+91 98765 43210</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Current Status</p>
+                                    <p class="font-medium flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 mr-2 blink"></span>
+                                        In Transit
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Last Update</p>
+                                    <p class="font-medium">2 mins ago</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Current Location</p>
+                                <p class="font-medium">NH 48, Near Gurugram, Haryana</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Speed</p>
+                                <div class="flex items-center">
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                                    </div>
+                                    <span>65 km/h</span>
+                                </div>
+                            </div>
+                            <button class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                                Call Driver
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Route Information -->
+                    <div class="lg:col-span-2 bg-white p-4 rounded-xl shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold">Route Information</h2>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm">Today</button>
+                                <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm">Week</button>
+                                <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm">Month</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <div class="flex justify-between mb-2">
+                                <div class="flex items-center">
+                                    <span class="route-marker mr-2"></span>
+                                    <span>Flipkart Warehouse, Delhi</span>
+                                </div>
+                                <span class="text-sm text-gray-500">10:30 AM</span>
+                            </div>
+                            
+                            <div class="flex justify-between mb-2 ml-5">
+                                <div class="flex items-center">
+                                    <span class="route-marker mr-2"></span>
+                                    <span>Gurugram Distribution Center</span>
+                                </div>
+                                <span class="text-sm text-gray-500">11:45 AM</span>
+                            </div>
+                            
+                            <div class="flex justify-between mb-2 ml-10">
+                                <div class="flex items-center">
+                                    <span class="route-marker mr-2"></span>
+                                    <span>Customer Location (Plot 45, Sector 28)</span>
+                                </div>
+                                <span class="text-sm text-gray-500">ETA 12:30 PM</span>
+                            </div>
+                            
+                            <div class="flex justify-between">
+                                <div class="flex items-center">
+                                    <span class="route-marker mr-2"></span>
+                                    <span>Return to Warehouse</span>
+                                </div>
+                                <span class="text-sm text-gray-500">ETA 2:15 PM</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Speed and Performance Chart -->
+                        <div>
+                            <h3 class="font-medium mb-2">Speed Analysis</h3>
+                            <div class="h-48">
+                                <canvas id="speedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activities -->
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <h2 class="text-lg font-semibold mb-4">Recent Activities</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/edc36b37-e0a0-4517-9782-16c5c4d2128d.png" alt="Small icon of a scooter for activity log" class="h-10 w-10 rounded-full">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">KA 04 CD 5678</div>
+                                                <div class="text-sm text-gray-500">Scooter</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Delivery Completed</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">HSR Layout, Bengaluru</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            3 mins ago
+                                        </span>
+                                    </td>
+                                </tr>
+                                
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/390448bb-c1c0-43ec-9906-2414dad645d2.png" alt="Small icon of a truck for activity log" class="h-10 w-10 rounded-full">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">DL 01 AB 1234</div>
+                                                <div class="text-sm text-gray-500">Truck</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Departure from Warehouse</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Flipkart Warehouse, Delhi</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            15 mins ago
+                                        </span>
+                                    </td>
+                                </tr>
+                                
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a33c911-6e69-4d3f-979a-a8d9f8d08b5a.png" alt="Small icon of a van for activity log" class="h-10 w-10 rounded-full">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">MH 02 EF 9012</div>
+                                                <div class="text-sm text-gray-500">Van</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Idle for more than 30 mins</div>
+                                        <div class="text-sm text-gray-500">Suspicious activity detected</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Andheri East, Mumbai</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            42 mins ago
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Map
+        const map = L.map('map').setView([28.6139, 77.2090], 11); // Default to Delhi
+        
+        // Add Tile Layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add Sample Vehicle Markers
+        const vehicles = [
+            {
+                id: 'DL 01 AB 1234',
+                type: 'truck',
+                lat: 28.62,
+                lng: 77.20,
+                status: 'moving',
+                speed: 65
+            },
+            {
+                id: 'KA 04 CD 5678',
+                type: 'scooter',
+                lat: 28.58,
+                lng: 77.18,
+                status: 'stopped',
+                speed: 0
+            },
+            {
+                id: 'MH 02 EF 9012',
+                type: 'van',
+                lat: 28.60,
+                lng: 77.22,
+                status: 'idle',
+                speed: 0
+            }
+        ];
+        
+        // Vehicle Icons
+        const movingIcon = L.divIcon({
+            className: 'moving-vehicle-icon',
+            html: '<div style="background-color: #3182ce; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20]
+        });
+        
+        const stoppedIcon = L.divIcon({
+            className: 'stopped-vehicle-icon',
+            html: '<div style="background-color: #e53e3e; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20]
+        });
+        
+        const idleIcon = L.divIcon({
+            className: 'idle-vehicle-icon',
+            html: '<div style="background-color: #d69e2e; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20]
+        });
+        
+        // Add vehicle markers to the map
+        vehicles.forEach(vehicle => {
+            let icon;
+            if (vehicle.status === 'moving') icon = movingIcon;
+            else if (vehicle.status === 'idle') icon = idleIcon;
+            else icon = stoppedIcon;
+            
+            const marker = L.marker([vehicle.lat, vehicle.lng], { icon: icon })
+                .bindPopup(`<b>${vehicle.id}</b><br>Status: ${vehicle.status}<br>Speed: ${vehicle.speed} km/h`);
+            
+            // Add moving animation if vehicle is moving
+            if (vehicle.status === 'moving') {
+                setInterval(() => {
+                    const newLat = marker.getLatLng().lat + (Math.random() * 0.001 - 0.0005);
+                    const newLng = marker.getLatLng().lng + (Math.random() * 0.001 - 0.0005);
+                    marker.setLatLng([newLat, newLng]);
+                }, 3000);
+            }
+        });
+        
+        // Add route polyline (sample route)
+        const routeCoordinates = [
+            [28.61, 77.15],  // Start point (Warehouse)
+            [28.60, 77.17],  // Waypoint 1
+            [28.59, 77.18],  // Waypoint 2
+            [28.58, 77.20],  // Waypoint 3
+            [28.57, 77.21],  // Destination
+        ];
+        
+        const routeLine = L.polyline(routeCoordinates, {
+            color: '#3182ce',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        // Add start and end markers
+        L.marker(routeCoordinates[0]).bindPopup('Start: Flipkart Warehouse').addTo(map);
+        L.marker(routeCoordinates[routeCoordinates.length - 1]).bindPopup('Destination: Gurugram DC').addTo(map);
+        
+        // Speed Chart
+        const speedCtx = document.getElementById('speedChart').getContext('2d');
+        const speedChart = new Chart(speedCtx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+                datasets: [{
+                    label: 'Speed (km/h)',
+                    data: [0, 55, 60, 45, 60, 30, 0, 40],
+                    borderColor: '#3182ce',
+                    backgroundColor: 'rgba(49, 130, 206, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 80,
+                        ticks: {
+                            stepSize: 20
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Simulate real-time updates
+        function updateVehiclePositions() {
+            // In a real implementation, this would fetch data from your tracking API
+            console.log("Updating vehicle positions...");
+        }
+        
+        setInterval(updateVehiclePositions, 5000);
+        
+        // Phone tracking integration (placeholder for actual implementation)
+        function initializePhoneTracking() {
+            // This would integrate with your phone tracking solution
+            console.log("Initializing phone tracking...");
+        }
+        
+        // Initialize tracking when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePhoneTracking();
+        });
+    </script>
 </body>
 </html>
+
